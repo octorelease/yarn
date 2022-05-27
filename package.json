@@ -1,0 +1,51 @@
+{
+  "name": "@octorelease/yarn",
+  "version": "0.0.1",
+  "description": "Octorelease plugin to perform actions related to Yarn Workspaces.",
+  "main": "lib/index.js",
+  "files": [
+    "lib",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc && npm run lint",
+    "lint": "eslint src",
+    "prepare": "tsc",
+    "test": "jest",
+    "watch": "tsc -w"
+  },
+  "keywords": [
+    "yarn",
+    "npm",
+    "octorelease",
+    "plugin",
+    "publish",
+    "version"
+  ],
+  "author": "t1m0thyj",
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@actions/exec": "^1.1.0",
+    "@octorelease/npm": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.0",
+    "@types/node": "^16.6.0",
+    "@typescript-eslint/eslint-plugin": "^4.29.0",
+    "@typescript-eslint/parser": "^4.29.0",
+    "eslint": "^7.3.1",
+    "eslint-plugin-jest": "^24.4.0",
+    "eslint-plugin-license-header": "^0.4.0",
+    "eslint-plugin-unused-imports": "^1.1.2",
+    "jest": "^27.0.0",
+    "jest-circus": "^27.0.0",
+    "ts-jest": "^27.0.0",
+    "typescript": "^4.3.0"
+  },
+  "peerDependencies": {
+    "@octorelease/core": "^0.1.0"
+  }
+}
