@@ -18,6 +18,7 @@ import * as fs from "fs";
 import { IContext } from "@octorelease/core";
 import { DEFAULT_NPM_REGISTRY, utils as npmUtils } from "@octorelease/npm";
 import { IPluginConfig } from "./config";
+import { getWorkspaceInfo } from "./utils";
 
 export default async function (context: IContext, _config: IPluginConfig): Promise<void> {
     if (context.env.NPM_TOKEN == null) {
@@ -30,13 +31,13 @@ export default async function (context: IContext, _config: IPluginConfig): Promi
         context.version.new = lernaJson.version;
         publishConfig = lernaJson.publish;
     } catch {
-        context.logger.warning(`Missing or invalid lerna.json in branch ${context.branch.name}`);
+        context.logger.warn(`Missing or invalid lerna.json in branch ${context.branch.name}`);
     }
 
     try {
-        context.workspaces = JSON.parse(fs.readFileSync("package.json", "utf-8")).workspaces;
+        context.workspaces = await getWorkspaceInfo();
     } catch {
-        context.logger.warning(`Missing or invalid package.json in branch ${context.branch.name}`);
+        context.logger.warn(`Missing or invalid package.json in branch ${context.branch.name}`);
     }
 
     context.branch.channel = context.branch.channel || "latest";

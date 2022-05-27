@@ -15,22 +15,57 @@
  */
 
 import * as exec from "@actions/exec";
+import { readFileSync, writeFileSync } from "fs";
+import { join } from "path";
+import { IWorkspaceInfo } from "@octorelease/core";
 
-export async function lernaList(onlyChanged?: boolean): Promise<Record<string, any>[]> {
-    let cmdOutput = await exec.getExecOutput("npx", ["lerna", "list", "--json", "--toposort"]);
-    const packageInfo = JSON.parse(cmdOutput.stdout);
-
-    if (onlyChanged) {
-        cmdOutput = await exec.getExecOutput("npx", ["lerna", "changed", "--include-merged-tags"], { ignoreReturnCode: true });
-        const changedPackages = cmdOutput.stdout.split(/\r?\n/);
-        return packageInfo.filter((pkg: any) => changedPackages.includes(pkg.name));
+export async function getWorkspaceInfo(): Promise<IWorkspaceInfo[]> {
+    const workspaces = [];
+    for (const [name, info] of Object.entries(await yarnList())) {
+        const displayName = JSON.parse(readFileSync(join(info.location, "package.json"), "utf-8")).displayName;
+        workspaces.push({name:  displayName ?? name, path: info.location});
     }
-
-    return packageInfo;
+    return workspaces;
 }
 
-export async function lernaVersion(newVersion: string): Promise<void> {
-    await exec.exec("npx", ["lerna", "version", newVersion, "--exact", "--include-merged-tags", "--no-git-tag-version", "--yes"]);
-    // Update subpackage versions in lockfile (requires npm@8.5 or newer)
-    await exec.exec("npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit"]);
+export async function yarnList(): Promise<Record<string, any>> {
+    const cmdOutput = await exec.getExecOutput("npx", ["yarn", "workspaces", "list", "--json"]);
+    const lines = cmdOutput.stdout.split(/\r?\n/);
+    if (lines[0].indexOf("yarn") >= 0) lines.splice(0, 1);
+    if (lines[lines.length - 1].indexOf("Done") >= 0) lines.pop();
+    return JSON.parse(lines.join());
+}
+
+export async function yarnPretty(): Promise<void> {
+    if (JSON.parse(readFileSync("package.json", "utf-8")).scripts?.pretty)
+        await exec.exec("npx", ["yarn", "pretty"]);
+}
+
+export async function yarnVersion(newVersion: string): Promise<void> {
+    const dependencyList = ["dependencies", "devDependencies", "peerDependencies", "bundledDependencies", "optionalDependencies", "overrides"];
+    const topPackageJson = JSON.parse(readFileSync("package.json", "utf-8"));
+
+    if (topPackageJson.workspaces) {
+        // TODO: Figure out if the order matters
+        for (const info of Object.values(await yarnList())) {
+            const packagePath = join(info.location, "package.json");
+            const packageJson = JSON.parse(readFileSync(packagePath, "utf-8"));
+            packageJson.version = newVersion;
+
+            // Update every workspace dependency in the dependencyList
+            for (const dep of info.workspaceDependencies) {
+                const foundInList = dependencyList.filter(d => packageJson[d][dep] != null);
+
+                for (const list of foundInList) {
+                    packageJson[list][dep] = newVersion;
+                }
+            }
+            writeFileSync(packagePath, JSON.stringify(packageJson));
+        }
+    }
+
+    topPackageJson.version = newVersion;
+    writeFileSync("package.json", JSON.stringify(topPackageJson));
+
+    await yarnPretty();
 }
